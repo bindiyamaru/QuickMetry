@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { format } from "date-fns";
 import { RefreshCw, Activity, History, Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const { data: results, isLoading, isError } = useAudiometryResults();
