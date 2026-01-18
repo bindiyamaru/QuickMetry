@@ -1,0 +1,285 @@
+Great 👍
+Let’s lock this in and design it **exactly** so you can build it **solo, in 1 day, using Node.js + React + AI tools (Replit)** and still **impress a CTO**.
+
+---
+
+# 🎯 Final Chosen Sample
+
+## **Audiometry Results & Billing Sync Portal**
+
+> *A healthcare workflow demo focusing on data management, billing integration, error handling, and recovery.*
+
+This is **not a medical app** — it’s a **robust portal**.
+
+---
+
+# 🏗️ Exact Architecture (Node.js + React)
+
+### Architecture Style
+
+✅ **Modular Monolith**
+
+* Single backend
+* Clean separation of concerns
+* Easy to explain, scale, and maintain
+
+---
+
+## 🔹 High-Level Flow
+
+```
+[ React Admin UI ]
+       |
+       v
+[ Node.js API (Express) ]
+       |
+       ├── Audiometry Results Service
+       ├── Billing Service
+       ├── Sync & Retry Service
+       |
+       v
+[ SQLite DB ]
+       |
+       v
+[ Mock External Systems ]
+   ├── Mock Billing (QuickBooks-like)
+   └── Mock EHR (optional)
+```
+
+---
+
+## 🧱 Backend Tech Stack
+
+* **Node.js**
+* **Express**
+* **Prisma ORM**
+* **SQLite**
+* **UUID**
+* **Axios**
+
+👉 Perfect for Replit + AI coding.
+
+---
+
+## 🧱 Frontend Tech Stack
+
+* **React**
+* **Axios**
+* **Plain CSS**
+* **No UI frameworks** (speed + clarity)
+
+---
+
+# 🗂️ Folder Structure (Use This Exactly)
+
+```
+vestmed-audiometry-portal/
+│
+├── backend/
+│   ├── src/
+│   │   ├── routes/
+│   │   │   ├── audiometry.routes.js
+│   │   │   ├── billing.routes.js
+│   │   │   └── sync.routes.js
+│   │   │
+│   │   ├── services/
+│   │   │   ├── audiometry.service.js
+│   │   │   ├── billing.service.js
+│   │   │   ├── sync.service.js
+│   │   │   └── retry.service.js
+│   │   │
+│   │   ├── models/
+│   │   │   └── prisma.schema
+│   │   │
+│   │   ├── mock/
+│   │   │   └── mockBilling.api.js
+│   │   │
+│   │   └── app.js
+│   │
+│   └── prisma/
+│       └── schema.prisma
+│
+├── frontend/
+│   └── src/
+│       ├── pages/
+│       │   └── Dashboard.jsx
+│       ├── components/
+│       │   └── AudiometryTable.jsx
+│       └── App.jsx
+│
+└── README.md
+```
+
+This structure alone shows **senior-level discipline**.
+
+---
+
+# 📦 Data Models (Simple & Impressive)
+
+### 🎧 Audiometry Result
+
+```json
+{
+  "id": "uuid",
+  "patientName": "string",
+  "testDate": "date",
+  "leftEarDb": 30,
+  "rightEarDb": 35,
+  "status": "NEW | BILLED | FAILED",
+  "createdAt": "timestamp"
+}
+```
+
+---
+
+### 💳 Billing Sync Log (Key Value)
+
+```json
+{
+  "id": "uuid",
+  "audiometryId": "uuid",
+  "status": "SUCCESS | FAILED",
+  "errorType": "AUTH | VALIDATION | NETWORK | RATE_LIMIT",
+  "errorMessage": "string",
+  "retryCount": 2,
+  "createdAt": "timestamp"
+}
+```
+
+---
+
+# 🔁 Billing Sync Logic (Core Value)
+
+### Flow
+
+1. Audiometry result saved
+2. Billing record generated
+3. Attempt sync with external billing system
+4. Handle:
+
+   * Auth errors
+   * Validation errors
+   * Timeouts
+   * Partial failures
+5. Log errors
+6. Retry eligible failures
+
+---
+
+### Pseudocode
+
+```js
+try {
+  sendBillingData()
+  markAsBilled()
+} catch (err) {
+  classifyError(err)
+  logSyncFailure()
+  if (retryable) queueRetry()
+}
+```
+
+---
+
+# 🧪 Mock Billing API (QuickBooks-style)
+
+Randomly return:
+
+* `401` Unauthorized
+* `400` Validation error
+* `429` Rate limit
+* `500` Server error
+* `200` Success
+
+Explain:
+
+> “This simulates real-world billing instability.”
+
+---
+
+# 🖥️ React Dashboard (Minimal but Clear)
+
+Show:
+
+* Audiometry results list
+* Billing status
+* Error reason
+* Retry button
+
+That’s all you need.
+
+---
+
+# 🔐 Security (Light & Honest)
+
+* Hardcoded API token
+* Note future Azure AD / OAuth
+
+---
+
+# 📊 Observability
+
+* Correlation ID per request
+* Structured logs
+* Clear error messages
+
+---
+
+# ⏱️ One-Day Build Plan
+
+### Morning
+
+* Backend setup
+* DB models
+* Core APIs
+* Mock billing
+
+### Afternoon
+
+* Sync logic
+* Retry mechanism
+* Error handling
+
+### Evening
+
+* React UI
+* README
+* Cleanup
+
+---
+
+# 📝 README (CTO-Focused Points)
+
+Include:
+
+* Problem statement
+* Architecture diagram
+* Error scenarios handled
+* Why modular monolith
+* How this maps to VestMed
+* Azure scalability note
+* **Medical disclaimer**
+
+---
+
+# 🗣️ What to Say in Interview
+
+Use this line:
+
+> “I chose audiometry as a representative healthcare workflow to demonstrate how I design reliable, failure-aware integration systems.”
+
+That line hits **technical + domain + leadership**.
+
+---
+
+## 🚀 Next step (I’ll do this with you)
+
+I can now:
+
+1. Generate **Prisma schema**
+2. Create **Express app starter**
+3. Write **Mock Billing API**
+4. Scaffold **React dashboard**
+5. Draft **README.md**
+
+👉 **Say “Start backend” or “Start frontend”** and I’ll generate production-ready starter code you can paste directly into Replit.
