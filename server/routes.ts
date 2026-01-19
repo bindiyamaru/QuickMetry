@@ -3,6 +3,8 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
+// @ts-ignore
+import OAuthClient from 'intuit-oauth';
 
 // --- MOCK BILLING SERVICE ---
 // Simulates a flaky external API (QuickBooks-like)
@@ -33,6 +35,132 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  const oauthClient = new OAuthClient({
+    clientId: process.env.QUICKBOOKS_CLIENT_ID,
+    clientSecret: process.env.QUICKBOOKS_CLIENT_SECRET,
+    environment: process.env.QUICKBOOKS_ENVIRONMENT || 'sandbox',
+    redirectUri: process.env.QUICKBOOKS_REDIRECT_URI,
+  });
+
+// app.post("/api/dev/clear-qb-tokens", async (_req, res) => {
+//   await db.delete(quickbooksTokens);
+//   res.send("QuickBooks tokens cleared");
+// });
+
+app.get("/auth/quickbooks", (_req, res) => {
+
+  const url = oauthClient.authorizeUri({
+    scope: [OAuthClient.scopes.Accounting],
+    state: "random-state-123",
+  });
+
+  res.redirect(url);
+});
+
+app.get('/auth/quickbooks/callback', async (req, res) => {
+  try {
+    const authResponse = await oauthClient.createToken(req.url);
+    const tokenData = authResponse.getJson();
+
+    const realmId = req.query.realmId as string;
+    if (!realmId) {
+      throw new Error("Missing realmId from QuickBooks callback");
+    }
+
+    const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+
+    await storage.saveQuickbooksToken({
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token,
+      expiresAt,
+      realmId,
+    });
+
+    res.send("QuickBooks connected successfully!");
+  } catch (error) {
+    console.error("OAuth callback error:", error);
+    res.status(500).send("Authentication failed");
+  }
+});
+
+app.get("/api/quickbooks/company", async (_req, res) => {
+  try {
+    const { accessToken, realmId } =
+      await refreshQuickbooksToken(oauthClient);
+
+    const response = await fetch(
+      `${process.env.QUICKBOOKS_BASE_URL}/v3/company/${realmId}/companyinfo/${realmId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error("Error in /api/quickbooks/company:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+app.post("/api/quickbooks/customers", async (req, res) => {
+  try {
+    const { patientId } = req.body;
+    if (!patientId) {
+      return res.status(400).json({ error: "patientId required" });
+    }
+
+    const patient = await storage.getAudiometryResult(patientId);
+    if (!patient) {
+      return res.status(404).json({ error: "Patient not found" });
+    }
+
+    if (patient.qbCustomerId) {
+      return res.status(400).json({ error: "Patient already synced to QuickBooks" });
+    }
+
+    const { accessToken, realmId } = await refreshQuickbooksToken(oauthClient);
+
+    const qbUrl = `${process.env.QUICKBOOKS_BASE_URL}/v3/company/${realmId}/customer`;
+
+    const customerData = {
+      DisplayName: patient.patientName,
+      Title: 'Msr/Ms',
+    };
+
+    const response = await fetch(qbUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(customerData),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json();
+      console.error("QB API Error:", errData);
+      throw new Error(errData.Fault?.Error?.[0]?.Message || "QuickBooks API error");
+    }
+
+    const data = await response.json();
+    const qbCustomerId = data.Customer.Id;
+
+    await storage.updateAudiometryQbCustomerId(patientId, qbCustomerId);
+
+    res.json({ success: true, qbCustomerId });
+  } catch (err) {
+    console.error("Error creating QB customer:", err);
+    res.status(500).json({ error: "Failed to create customer in QuickBooks" });
+  }
+});
+
 
   // GET Results (with last log attached)
   app.get(api.audiometry.list.path, async (req, res) => {
@@ -124,6 +252,50 @@ export async function registerRoutes(
 
   return httpServer;
 }
+
+ // Helper function to refresh QuickBooks token
+ async function refreshQuickbooksToken(oauthClient: OAuthClient) {
+  const token = await storage.getQuickbooksToken();
+  if (!token) throw new Error("No QuickBooks token found");
+
+  // Only refresh if expired (with 1 min buffer)
+  const isExpired =
+    token.expiresAt.getTime() <= Date.now() + 60_000;
+
+  if (!isExpired) {
+    return {
+      accessToken: token.accessToken,
+      realmId: token.realmId,
+    };
+  }
+
+  console.log("🔄 Refreshing QuickBooks token");
+
+  oauthClient.setToken({
+    access_token: token.accessToken,
+    refresh_token: token.refreshToken,
+    realmId: token.realmId,
+  });
+
+  const authResponse = await oauthClient.refresh();
+  const newTokenData = authResponse.getJson();
+
+  const newExpiresAt = new Date(
+    Date.now() + newTokenData.expires_in * 1000
+  );
+
+  await storage.updateQuickbooksToken(token.id, {
+    accessToken: newTokenData.access_token,
+    refreshToken: newTokenData.refresh_token,
+    expiresAt: newExpiresAt,
+  });
+
+  return {
+    accessToken: newTokenData.access_token,
+    realmId: newTokenData.realmId ?? token.realmId,
+  };
+}
+
 
 async function seedDatabase() {
   const existing = await storage.getAudiometryResults();

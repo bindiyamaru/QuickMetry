@@ -2,10 +2,13 @@ import { db } from "./db";
 import {
   audiometryResults,
   billingSyncLogs,
+  quickbooksTokens,
   type AudiometryResult,
   type InsertAudiometryResult,
   type BillingSyncLog,
-  type InsertBillingSyncLog
+  type InsertBillingSyncLog,
+  type QuickbooksToken,
+  type InsertQuickbooksToken
 } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 
@@ -15,11 +18,17 @@ export interface IStorage {
   getAudiometryResult(id: number): Promise<AudiometryResult | undefined>;
   createAudiometryResult(result: InsertAudiometryResult): Promise<AudiometryResult>;
   updateAudiometryStatus(id: number, status: "NEW" | "BILLED" | "FAILED"): Promise<AudiometryResult>;
+  updateAudiometryQbCustomerId(id: number, qbCustomerId: string): Promise<AudiometryResult>;
 
   // Logs
   createSyncLog(log: InsertBillingSyncLog): Promise<BillingSyncLog>;
   getSyncLogs(audiometryId: number): Promise<BillingSyncLog[]>;
   getLastSyncLog(audiometryId: number): Promise<BillingSyncLog | undefined>;
+
+  // QuickBooks Tokens
+  getQuickbooksToken(): Promise<QuickbooksToken | undefined>;
+  saveQuickbooksToken(token: InsertQuickbooksToken): Promise<QuickbooksToken>;
+  updateQuickbooksToken(id: number, token: Partial<InsertQuickbooksToken>): Promise<QuickbooksToken>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -41,6 +50,15 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(audiometryResults)
       .set({ status })
+      .where(eq(audiometryResults.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateAudiometryQbCustomerId(id: number, qbCustomerId: string): Promise<AudiometryResult> {
+    const [updated] = await db
+      .update(audiometryResults)
+      .set({ qbCustomerId })
       .where(eq(audiometryResults.id, id))
       .returning();
     return updated;
@@ -68,6 +86,40 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     return log;
   }
+
+  async getQuickbooksToken(): Promise<QuickbooksToken | undefined> {
+    const [token] = await db.select().from(quickbooksTokens).orderBy(desc(quickbooksTokens.createdAt)).limit(1);
+    return token;
+  }
+
+  async saveQuickbooksToken(token: InsertQuickbooksToken) {
+  await db.delete(quickbooksTokens);
+
+  const [created] = await db
+    .insert(quickbooksTokens)
+    .values(token)
+    .returning();
+
+  return created;
+}
+
+
+  async updateQuickbooksToken(
+  id: number,
+  token: Pick<
+    InsertQuickbooksToken,
+    "accessToken" | "refreshToken" | "expiresAt"
+  >
+): Promise<QuickbooksToken> {
+  const [updated] = await db
+    .update(quickbooksTokens)
+    .set(token)
+    .where(eq(quickbooksTokens.id, id))
+    .returning();
+
+  return updated;
+}
+
 }
 
 export const storage = new DatabaseStorage();

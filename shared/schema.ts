@@ -13,6 +13,7 @@ export const audiometryResults = pgTable("audiometry_results", {
   rightEarDb: integer("right_ear_db").notNull(),
   // Status tracks the overall billing state of this result
   status: text("status", { enum: ["NEW", "BILLED", "FAILED"] }).notNull().default("NEW"),
+  qbCustomerId: text("qb_customer_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -24,6 +25,16 @@ export const billingSyncLogs = pgTable("billing_sync_logs", {
   errorType: text("error_type", { enum: ["AUTH", "VALIDATION", "NETWORK", "RATE_LIMIT", "NONE"] }),
   errorMessage: text("error_message"),
   retryCount: integer("retry_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// 3. QuickBooks Tokens
+export const quickbooksTokens = pgTable("quickbooks_tokens", {
+  id: serial("id").primaryKey(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  realmId: text("realm_id").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -40,6 +51,11 @@ export const insertSyncLogSchema = createInsertSchema(billingSyncLogs).omit({
   createdAt: true
 });
 
+export const insertQuickbooksTokenSchema = createInsertSchema(quickbooksTokens).omit({
+  id: true,
+  createdAt: true
+});
+
 // === TYPES ===
 
 export type AudiometryResult = typeof audiometryResults.$inferSelect;
@@ -47,6 +63,9 @@ export type InsertAudiometryResult = z.infer<typeof insertAudiometrySchema>;
 
 export type BillingSyncLog = typeof billingSyncLogs.$inferSelect;
 export type InsertBillingSyncLog = z.infer<typeof insertSyncLogSchema>;
+
+export type QuickbooksToken = typeof quickbooksTokens.$inferSelect;
+export type InsertQuickbooksToken = z.infer<typeof insertQuickbooksTokenSchema>;
 
 // Request types
 export type CreateResultRequest = InsertAudiometryResult;

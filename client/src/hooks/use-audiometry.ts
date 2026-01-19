@@ -108,3 +108,49 @@ export function useSyncLogs(id: number, isOpen: boolean) {
     enabled: isOpen, // Only fetch when modal is open
   });
 }
+
+export function useCompanyInfo() {
+  return useQuery({
+    queryKey: ['quickbooks-company'],
+    queryFn: async () => {
+      const res = await fetch('/api/quickbooks/company');
+      if (!res.ok) throw new Error("Failed to fetch company info");
+      return await res.json();
+    },
+  });
+}
+
+export function useSyncToQbCustomer() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (patientId: number) => {
+      const res = await fetch('/api/quickbooks/customers', {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId }),
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to sync to QuickBooks");
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.audiometry.list.path] });
+      toast({
+        title: "Success",
+        description: "Patient synced to QuickBooks as customer.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}

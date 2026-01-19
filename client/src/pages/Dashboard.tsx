@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useAudiometryResults, useSyncBilling } from "@/hooks/use-audiometry";
+import { useAudiometryResults, useSyncBilling, useSyncToQbCustomer } from "@/hooks/use-audiometry";
 import { CreateResultDialog } from "@/components/CreateResultDialog";
+import { CompanyInfoDialog } from "@/components/CompanyInfoDialog";
 import { SyncLogsSheet } from "@/components/SyncLogsSheet";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -14,13 +15,14 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { format } from "date-fns";
-import { RefreshCw, Activity, History, Loader2, Search } from "lucide-react";
+import { RefreshCw, Activity, History, Loader2, Search, UserPlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const { data: results, isLoading, isError } = useAudiometryResults();
   const syncMutation = useSyncBilling();
+  const qbSyncMutation = useSyncToQbCustomer();
   const [selectedLogId, setSelectedLogId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -66,7 +68,10 @@ export default function Dashboard() {
               Manage patient hearing test results and billing synchronization.
             </p>
           </div>
-          <CreateResultDialog />
+          <div className="flex gap-2">
+            <CreateResultDialog />
+            <CompanyInfoDialog />
+          </div>
         </div>
 
         {/* Stats Overview (Optional Polish) */}
@@ -194,6 +199,21 @@ export default function Dashboard() {
                             : result.status === "BILLED" 
                               ? "Synced" 
                               : "Sync Billing"}
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={!!result.qbCustomerId || qbSyncMutation.isPending}
+                          onClick={() => qbSyncMutation.mutate(result.id)}
+                          className="w-32"
+                        >
+                          {qbSyncMutation.isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                          ) : (
+                            <UserPlus className="h-3.5 w-3.5 mr-1" />
+                          )}
+                          {result.qbCustomerId ? "QB Synced" : "Export to QB"}
                         </Button>
                       </TableCell>
                     </TableRow>
